@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Extracto</string>
+    <string name="pdf_information_extractor">PDF Information Extractor</string>
+    <string name="upload_pdf">Upload PDF</string>
+</resources>
