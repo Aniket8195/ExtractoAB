@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,8 +59,6 @@ public class MainActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(intent, PICK_PDF_REQUEST);
     }
-
-    @SuppressWarnings("deprecation")
     private void extractInformationFromPdf(Uri pdfUri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(pdfUri);
@@ -94,28 +91,51 @@ public class MainActivity extends AppCompatActivity {
             String[] lines = pageText.split("\n");
 
             String name = "";
-            String rollNumber = "";
-            String marks = "";
+            String prn = "";
+            boolean courseSectionStarted = false;
 
             for (String line : lines) {
-                // Extract the name and roll number
-                if (line.contains("Name:")) {
-                    name = line.substring(line.indexOf("Name:") + 5).trim();
-                } else if (line.contains("Roll Number:")) {
-                    rollNumber = line.substring(line.indexOf("Roll Number:") + 12).trim();
-                } else if (line.contains("Subject:") && line.contains("Marks:")) {
-                    // Extract subject-wise marks
-                    String subject = line.substring(line.indexOf("Subject:") + 8, line.indexOf("Marks:")).trim();
-                    String mark = line.substring(line.indexOf("Marks:") + 6).trim();
-                    marks += subject + ": " + mark + "\n";
+                // Extract the name (only the first occurrence)
+                if (line.contains("Name :") && name.isEmpty()) {
+                    String fullName = line.substring(line.indexOf("Name :") + 7).trim();
+                    int lastNameIndex = fullName.lastIndexOf(" ");
+                    if (lastNameIndex != -1) {
+                        name = fullName.substring(lastNameIndex + 1) + " " + fullName.substring(0, lastNameIndex);
+                    } else {
+                        name = fullName;
+                    }
+                }
+
+                // Extract the PRN
+                if (line.contains("PRN :")) {
+                    prn = line.substring(line.indexOf("PRN :") + 6).trim();
+                }
+
+                // Check if the course section has started
+                if (line.contains("Semester")) {
+                    courseSectionStarted = true;
+                    // Append the extracted data to the pageData StringBuilder
+                    pageData.append("Page ").append(pageNum).append(":\n");
+                    pageData.append("Name: ").append(name).append("\n");
+                    pageData.append("PRN: ").append(prn).append("\n");
+                    pageData.append("Course Name\tGrade Points\n");
+                    continue;
+                }
+
+                // Extract course name and grade points
+                if (courseSectionStarted) {
+                    String[] courseData = line.trim().split("\\s+");
+                    if (courseData.length >= 6) {
+                        StringBuilder courseNameBuilder = new StringBuilder();
+                        for (int i = 2; i < courseData.length - 2; i++) {
+                            courseNameBuilder.append(courseData[i]).append(" ");
+                        }
+                        String courseName = courseNameBuilder.toString().trim();
+                        String gradePoints = courseData[courseData.length - 1];
+                        pageData.append(courseName).append("\t").append(gradePoints).append("\n");
+                    }
                 }
             }
-
-            // Append the extracted data to the pageData StringBuilder
-            pageData.append("Page ").append(pageNum).append(":\n");
-            pageData.append("Name: ").append(name).append("\n");
-            pageData.append("Roll Number: ").append(rollNumber).append("\n");
-            pageData.append("Marks:\n").append(marks).append("\n");
         } catch (IOException e) {
             e.printStackTrace();
             Toast.makeText(this, "Error occurred while extracting data from page " + pageNum, Toast.LENGTH_SHORT).show();
@@ -123,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
 
         return pageData.toString();
     }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
