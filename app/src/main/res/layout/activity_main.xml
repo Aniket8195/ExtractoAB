@@ -9,21 +9,62 @@
         android:id="@+id/btnUpload"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Upload PDF"
-        android:layout_centerInParent="true"/>
+        android:text="@string/upload_pdf"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
 
-    <ScrollView
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/btnUpload"
         android:layout_marginTop="16dp">
 
-        <TextView
-            android:id="@+id/tvResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="16sp" />
+        <ScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent">
 
-    </ScrollView>
+            <TableLayout
+                android:id="@+id/tableLayout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:stretchColumns="*">
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:layout_column="1"
+                        android:padding="5dp"
+                        android:textStyle="bold"
+                        android:text="" />
+
+                    <TextView
+                        android:layout_column="2"
+                        android:padding="5dp"
+                        android:textStyle="bold"
+                        android:text="" />
+
+                    <TextView
+                        android:layout_column="3"
+                        android:padding="5dp"
+                        android:textStyle="bold"
+                        android:text="" />
+
+                    <TextView
+                        android:layout_column="4"
+                        android:padding="5dp"
+                        android:textStyle="bold"
+                        android:text="" />
+
+                </TableRow>
+
+                <!-- Add more TableRows as needed -->
+
+            </TableLayout>
+
+        </ScrollView>
+
+    </HorizontalScrollView>
 
 </RelativeLayout>
