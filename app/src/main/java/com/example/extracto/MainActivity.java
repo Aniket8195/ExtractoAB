@@ -27,7 +27,11 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PICK_PDF_REQUEST = 1;
     private static final int STORAGE_PERMISSION_REQUEST = 2;
-
+    private static final String[] requiredPermissionList = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.ACCESS_MEDIA_LOCATION
+    };
     private Button btnUpload;
     private TableLayout tableLayout;
     private boolean headerAdded;
@@ -259,10 +263,17 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == STORAGE_PERMISSION_REQUEST) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            boolean allPermissionsGranted = true;
+            for (int i = 0; i < permissions.length; i++) {
+                if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+                    allPermissionsGranted = false;
+                    break;
+                }
+            }
+            if (allPermissionsGranted) {
                 openFilePicker();
             } else {
-                Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show();
+                ActivityCompat.requestPermissions(this, requiredPermissionList, STORAGE_PERMISSION_REQUEST);
             }
         }
     }
