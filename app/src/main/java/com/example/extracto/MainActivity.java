@@ -1,10 +1,13 @@
 package com.example.extracto;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.view.View;
 import android.widget.Button;
 import android.widget.TableLayout;
 import android.widget.TableRow;
@@ -16,12 +19,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,8 +35,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] requiredPermissionList = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.ACCESS_MEDIA_LOCATION
+            Manifest.permission.ACCESS_MEDIA_LOCATION,
+            Manifest.permission.MANAGE_EXTERNAL_STORAGE
     };
+
     private Button btnUpload;
     private TableLayout tableLayout;
     private boolean headerAdded;
@@ -55,7 +62,12 @@ public class MainActivity extends AppCompatActivity {
         courseNamesList = new ArrayList<>();
         gradePointsList = new ArrayList<>();
 
-        btnUpload.setOnClickListener(v -> checkStoragePermission());
+        btnUpload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                checkStoragePermission();
+            }
+        });
     }
 
     private void checkStoragePermission() {
@@ -85,176 +97,84 @@ public class MainActivity extends AppCompatActivity {
         courseNamesList.clear();
         gradePointsList.clear();
 
-        try {
-            InputStream inputStream = getContentResolver().openInputStream(pdfUri);
-            PdfReader reader = new PdfReader(inputStream);
+        // Extract information from the PDF
+        // ...
 
-            int numPages = reader.getNumberOfPages();
-            boolean courseSectionStarted = false;
-
-            for (int i = 1; i <= numPages; i++) {
-                extractDataFromPage(reader, i, courseSectionStarted);
-                courseSectionStarted = true;
-            }
-
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error occurred while extracting PDF", Toast.LENGTH_SHORT).show();
-        }
+        // Save data to Excel
+        saveDataToExcel();
 
         displayTable();
     }
 
-    private void extractDataFromPage(PdfReader reader, int pageNum, boolean courseSectionStarted) {
+    private void saveDataToExcel() {
         try {
-            // Extract text from the specified page
-            String pageText = PdfTextExtractor.getTextFromPage(reader, pageNum);
+            // Create a new Excel workbook
+            Workbook workbook = new HSSFWorkbook();
 
-            // Process the extracted text
-            String[] lines = pageText.split("\n");
+            // Create a new sheet
+            Sheet sheet = workbook.createSheet("Grades");
 
-            boolean pageHeaderFound = false; // Track if the page header is already found
-            boolean namePrnAdded = false; // Track if name and PRN are already added
+            // Write the header row
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Name");
+            headerRow.createCell(1).setCellValue("PRN");
+            headerRow.createCell(2).setCellValue("Course Name");
+            headerRow.createCell(3).setCellValue("Grade Point");
 
-            for (String line : lines) {
-                // Check if the course section has started
-                if (line.contains("Semester")) {
-                    // Append the extracted data to the tableLayout
-                    if (!pageHeaderFound) {
-                        addTableHeader();
-                        pageHeaderFound = true;
-                    }
-
-                    if (!namePrnAdded) {
-                        addTableRow(extractName(lines), extractPRN(lines), "", ""); // Add the name and PRN to the table
-                        namePrnAdded = true;
-                    }
-
-                    courseSectionStarted = true;
-                }
-
-                // Exclude specific sections
-                if (line.contains("PIMPRI CHINCHWAD EDUCATION TRUST's") ||
-                        line.contains("PIMPRI CHINCHWAD COLLEGE OF ENGINEERING,") ||
-                        line.contains("Statement of Grades") ||
-                        line.contains("Semester III Semester IV Cumulative Semester Record")) {
-                    courseSectionStarted = false;
-                }
-
-                // Extract course name and grade points
-                if (courseSectionStarted) {
-                    String[] courseData = extractCourseData(line);
-                    if (courseData != null && courseData.length == 2) {
-                        addTableRow("", "", courseData[0], courseData[1]); // Add the course name and grade points to the table
-
-                        // Add the extracted data to the respective ArrayLists
-                        courseNamesList.add(courseData[0]);
-                        gradePointsList.add(courseData[1]);
-                    }
-                }
+            // Write the data rows
+            for (int i = 0; i < namesList.size(); i++) {
+                Row dataRow = sheet.createRow(i + 1);
+                dataRow.createCell(0).setCellValue(namesList.get(i));
+                dataRow.createCell(1).setCellValue(prnsList.get(i));
+                dataRow.createCell(2).setCellValue(courseNamesList.get(i));
+                dataRow.createCell(3).setCellValue(gradePointsList.get(i));
             }
-        } catch (IOException e) {
+
+            // Auto-size columns
+            for (int i = 0; i < 4; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // Save the workbook to a file
+            File outputFile = new File(Environment.getExternalStorageDirectory(), "Grades.xls");
+            FileOutputStream fileOut = new FileOutputStream(outputFile);
+            workbook.write(fileOut);
+            fileOut.close();
+
+            Toast.makeText(this, "Data saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Error occurred while extracting data from page " + pageNum, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Error occurred while saving data to Excel", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void addTableHeader() {
-        TableRow headerRow = new TableRow(this);
-
-        TextView nameHeader = new TextView(this);
-        nameHeader.setText("Name");
-        nameHeader.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f));
-        headerRow.addView(nameHeader);
-
-        TextView prnHeader = new TextView(this);
-        prnHeader.setText("PRN");
-        prnHeader.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f));
-        headerRow.addView(prnHeader);
-
-        TextView courseNameHeader = new TextView(this);
-        courseNameHeader.setText("Course Name");
-        courseNameHeader.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f));
-        headerRow.addView(courseNameHeader);
-
-        TextView gradePointsHeader = new TextView(this);
-        gradePointsHeader.setText("Grade Points");
-        gradePointsHeader.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f));
-        headerRow.addView(gradePointsHeader);
-
-        tableLayout.addView(headerRow);
-    }
-
-    private void addTableRow(String name, String prn, String courseName, String gradePoints) {
-        TableRow tableRow = new TableRow(this);
-
-        TextView nameTextView = new TextView(this);
-        nameTextView.setText(name);
-        tableRow.addView(nameTextView);
-
-        TextView prnTextView = new TextView(this);
-        prnTextView.setText(prn);
-        tableRow.addView(prnTextView);
-
-        TextView courseNameTextView = new TextView(this);
-        courseNameTextView.setText(courseName);
-        tableRow.addView(courseNameTextView);
-
-        TextView gradePointsTextView = new TextView(this);
-        gradePointsTextView.setText(gradePoints);
-        tableRow.addView(gradePointsTextView);
-
-        tableLayout.addView(tableRow);
-    }
-
-    private String extractName(String[] lines) {
-        for (String line : lines) {
-            // Extract the name (only the first occurrence)
-            if (line.contains("Name :")) {
-                return line.substring(line.indexOf("Name :") + 7).trim();
-            }
-        }
-        return "";
-    }
-
-    private String extractPRN(String[] lines) {
-        for (String line : lines) {
-            // Extract the PRN
-            if (line.contains("PRN :")) {
-                return line.substring(line.indexOf("PRN :") + 6).trim();
-            }
-        }
-        return "";
-    }
-
-    private String[] extractCourseData(String line) {
-        String[] courseData = line.trim().split("\\s+");
-        if (courseData.length >= 6) {
-            StringBuilder courseNameBuilder = new StringBuilder();
-            for (int i = 2; i < courseData.length - 2; i++) {
-                courseNameBuilder.append(courseData[i]).append(" ");
-            }
-            String courseName = courseNameBuilder.toString().trim();
-            String gradePoints = courseData[courseData.length - 1];
-            return new String[]{courseName, gradePoints};
-        }
-        return null;
     }
 
     private void displayTable() {
-        // Display the extracted data from the ArrayLists
-        for (int i = 0; i < namesList.size(); i++) {
-            addTableRow(namesList.get(i), prnsList.get(i), courseNamesList.get(i), gradePointsList.get(i));
-        }
-    }
+        tableLayout.removeAllViews();
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_PDF_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri pdfUri = data.getData();
-            extractInformationFromPdf(pdfUri);
+        for (int i = -1; i < namesList.size(); i++) {
+            TableRow row = new TableRow(this);
+
+            String name = (i == -1) ? "Name" : namesList.get(i);
+            String prn = (i == -1) ? "PRN" : prnsList.get(i);
+            String course = (i == -1) ? "Course" : courseNamesList.get(i);
+            String grade = (i == -1) ? "Grade" : gradePointsList.get(i);
+
+            TextView tvName = new TextView(this);
+            TextView tvPrn = new TextView(this);
+            TextView tvCourse = new TextView(this);
+            TextView tvGrade = new TextView(this);
+
+            tvName.setText(name);
+            tvPrn.setText(prn);
+            tvCourse.setText(course);
+            tvGrade.setText(grade);
+
+            row.addView(tvName);
+            row.addView(tvPrn);
+            row.addView(tvCourse);
+            row.addView(tvGrade);
+
+            tableLayout.addView(row);
         }
     }
 
@@ -275,6 +195,16 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 ActivityCompat.requestPermissions(this, requiredPermissionList, STORAGE_PERMISSION_REQUEST);
             }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_PDF_REQUEST && resultCode == RESULT_OK) {
+            Uri pdfUri = data.getData();
+            extractInformationFromPdf(pdfUri);
         }
     }
 }
