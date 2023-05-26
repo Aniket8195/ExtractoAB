@@ -253,16 +253,19 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
     private void saveDataToExcel() {
-        Log.e("ss","ss");
+
+      //  File outputFile = new File(getExternalFilesDir(null), + "/Grades.xls");
+        File outputFile=new File(Environment.getExternalStorageDirectory()+"/Grades.xls");
+
         try {
             // Create a new Excel workbook
             Workbook workbook = new HSSFWorkbook();
-            Log.e("hss","hss");
+
             // Create a new sheet
             Sheet sheet = workbook.createSheet("Grades");
 
             // Write the header row
-            Row headerRow = sheet.createRow(0);
+           Row headerRow = sheet.createRow(0);
             headerRow.createCell(0).setCellValue("Name");
             headerRow.createCell(1).setCellValue("PRN");
             headerRow.createCell(2).setCellValue("Course Name");
@@ -271,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
             // Write the data rows
             for (int i = 0; i < namesList.size(); i++) {
                 Row dataRow = sheet.createRow(i + 1);
-                dataRow.createCell(0).setCellValue(namesList.get(i));
+               dataRow.createCell(0).setCellValue(namesList.get(i));
                 dataRow.createCell(1).setCellValue(prnsList.get(i));
                 dataRow.createCell(2).setCellValue(courseNamesList.get(i));
                 dataRow.createCell(3).setCellValue(gradePointsList.get(i));
@@ -283,16 +286,28 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Save the workbook to a file
-            File outputFile = new File(Environment.getExternalStorageDirectory(), "Grades.xls");
+
             FileOutputStream fileOut = new FileOutputStream(outputFile);
             workbook.write(fileOut);
             fileOut.close();
 
-            Toast.makeText(this, "Data saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+           Toast.makeText(this, "Data saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Error occurred while saving data to Excel", Toast.LENGTH_SHORT).show();
         }
+//        HSSFWorkbook
+//        try {
+//            if(outputFile.exists()){
+//
+//                outputFile.createNewFile();
+//
+//
+//            }
+//        }catch (Exception e){
+//            e.printStackTrace();
+//        }
+
     }
 
     private void displayTable() {
