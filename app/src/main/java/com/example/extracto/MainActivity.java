@@ -1,6 +1,7 @@
 package com.example.extracto;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -115,10 +116,8 @@ public class MainActivity extends AppCompatActivity {
             courseSectionStarted = true;
         }
 
-
-        displayTable();
         saveDataToExcel();
-        writeDataToExcel(pdfUri);
+
     }
     private void extractDataFromPage(PdfReader reader, int pageNum, boolean courseSectionStarted) {
         try {
@@ -173,6 +172,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Error occurred while extracting data from page " + pageNum, Toast.LENGTH_SHORT).show();
         }
     }
+
     private void addTableHeader() {
         TableRow headerRow = new TableRow(this);
 
@@ -254,115 +254,37 @@ public class MainActivity extends AppCompatActivity {
         }
         return null;
     }
+    // Modify the saveDataToExcel() method
     private void saveDataToExcel() {
-
-//      //  File outputFile = new File(getExternalFilesDir(null), + "/Grades.xls");
-//        File outputFile=new File(Environment.getExternalStorageDirectory()+"/Grades.xls");
-//
-//        try {
-//            // Create a new Excel workbook
-//            Workbook workbook = new HSSFWorkbook();
-//
-//            // Create a new sheet
-//            Sheet sheet = workbook.createSheet("Grades");
-//
-//            // Write the header row
-//           Row headerRow = sheet.createRow(0);
-//            headerRow.createCell(0).setCellValue("Name");
-//            headerRow.createCell(1).setCellValue("PRN");
-//            headerRow.createCell(2).setCellValue("Course Name");
-//            headerRow.createCell(3).setCellValue("Grade Point");
-//
-//            // Write the data rows
-//            for (int i = 0; i < namesList.size(); i++) {
-//                Row dataRow = sheet.createRow(i + 1);
-//               dataRow.createCell(0).setCellValue(namesList.get(i));
-//                dataRow.createCell(1).setCellValue(prnsList.get(i));
-//                dataRow.createCell(2).setCellValue(courseNamesList.get(i));
-//                dataRow.createCell(3).setCellValue(gradePointsList.get(i));
-//            }
-//
-//            // Auto-size columns
-//            for (int i = 0; i < 4; i++) {
-//                sheet.autoSizeColumn(i);
-//            }
-//
-//            // Save the workbook to a file
-//
-//            FileOutputStream fileOut = new FileOutputStream(outputFile);
-//            workbook.write(fileOut);
-//            fileOut.close();
-//
-//           Toast.makeText(this, "Data saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            Toast.makeText(this, "Error occurred while saving data to Excel", Toast.LENGTH_SHORT).show();
-//        }
-////        HSSFWorkbook
-////        try {
-////            if(outputFile.exists()){
-////
-////                outputFile.createNewFile();
-////
-////
-////            }
-////        }catch (Exception e){
-////            e.printStackTrace();
-////        }
-
-//        String directoryPath = getExternalFilesDir(null).getAbsolutePath() + "/MyExcelFiles";
-//        File directory = new File(directoryPath);
-//        directory.mkdirs(); // Create the directory if it doesn't exist
-//
-//        String filePath = directoryPath + "/output.xlsx";
-//
-//
-//        // Create a new workbook
-//        try (Workbook workbook = new XSSFWorkbook()) {
-//            // Create a new sheet
-//            Sheet sheet = workbook.createSheet("Sheet1");
-//
-//            // Write data to the sheet
-//            for (int i = 0; i < 10; i++) {
-//                Row row = sheet.createRow(i);
-//                for (int j = 0; j < 5; j++) {
-//                    Cell cell = row.createCell(j);
-//                    // Specify the cell value
-//                    cell.setCellValue("Value " + i + "-" + j);
-//                }
-//            }
-//
-//            // Write the workbook to the output file
-//            try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
-//                workbook.write(fileOut);
-//            }
-//
-//            System.out.println("Excel file created successfully.");
-//            Toast.makeText(this, "Excel file created successfully.", Toast.LENGTH_SHORT).show();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
         String fileName = "output.xlsx";
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         intent.putExtra(Intent.EXTRA_TITLE, fileName);
-      //  startActivityForResult(intent, SAVE_EXCEL_REQUEST);
-        createDocumentLauncher.launch(fileName);
+
+        // Start the activity to create the document
+        createDocumentLauncher.launch(intent);
     }
-    private final ActivityResultLauncher<String> createDocumentLauncher = registerForActivityResult(
-            new ActivityResultContracts.CreateDocument(),
+
+    // Define a new activity result launcher for creating the Excel document
+    ActivityResultLauncher<Intent> createDocumentLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
             result -> {
-                if (result != null) {
-                    try {
-                        writeDataToExcel(result);
-                    } catch (IOException e) {
-                        Toast.makeText(MainActivity.this, "Error writing to Excel file", Toast.LENGTH_SHORT).show();
-                        e.printStackTrace();
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    // Get the URI of the created document
+                    Intent data = result.getData();
+                    if (data != null && data.getData() != null) {
+                        Uri uri = data.getData();
+                        try {
+                            // Write the data to the Excel file
+                            writeDataToExcel(uri);
+                            // Display the table with the extracted data
+                            displayTable();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-                } else {
-                    Toast.makeText(MainActivity.this, "Error creating the Excel file", Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -412,8 +334,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void displayTable() {
-        tableLayout.removeAllViews();
-        Log.e("h","h");
+     //   tableLayout.removeAllViews();
+     //   Log.e("h","h");
         for (int i = -1; i < namesList.size(); i++) {
             TableRow row = new TableRow(this);
 
@@ -470,13 +392,20 @@ public class MainActivity extends AppCompatActivity {
             Uri pdfUri = data.getData();
             try {
                 extractInformationFromPdf(pdfUri);
+                // Save the data to the Excel file after extracting from the PDF
+                saveDataToExcel();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        } else if (requestCode == SAVE_EXCEL_REQUEST && resultCode == RESULT_OK) {
-            Uri excelUri = data.getData();
-            // TODO: Save the Excel file using the excelUri
         }
     }
+
+
+
+
+
+
+
+
 
 }
